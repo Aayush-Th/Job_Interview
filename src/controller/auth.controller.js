@@ -2,6 +2,7 @@ const userModel = require('../models/user.models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+
 async function registerUserController(req, res) {
     const { username, email, password } = req.body;
     if(!username || !email || !password) {
@@ -60,4 +61,26 @@ async function loginUserController(req, res){
      });
 }
 
-module.exports = { registerUserController, loginUserController };
+
+async function logoutUserController(req, res) {
+    const token = req.cookies.token;    
+    if (token) {
+        // Add the token to the blacklist
+        await BlacklistToken.create({ token });
+    }       
+    res.clearCookie("token");
+    res.status(200).json({ message: 'Logout successful' });
+}
+
+async function getMeController(req, res) {
+    const user = await req.userModel.findById(req.user.id).select('-password');
+    res.status(200).json({ 
+        message: "User fetched successfully",
+        user:{
+            id: user._id,
+            username: user.username,
+            email: user.email
+        } });
+}
+
+module.exports = { registerUserController, loginUserController, logoutUserController, getMeController };
