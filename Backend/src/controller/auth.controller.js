@@ -1,6 +1,7 @@
 const userModel = require('../models/user.models');
 const bcrypt = require('../../node_modules/bcryptjs/umd');
 const jwt = require('jsonwebtoken');
+const BlacklistToken = require('../models/blacklist.model');
 
 
 async function registerUserController(req, res) {
@@ -73,7 +74,7 @@ async function logoutUserController(req, res) {
 }
 
 async function getMeController(req, res) {
-    const user = await req.userModel.findById(req.user.id).select('-password');
+    const user = await userModel.findById(req.user.id).select('-password');
     res.status(200).json({ 
         message: "User fetched successfully",
         user:{
