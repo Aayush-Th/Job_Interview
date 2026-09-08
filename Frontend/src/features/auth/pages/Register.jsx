@@ -3,6 +3,7 @@ import "../auth.form.scss"
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 
+
 const Register = () => {
 
     const { loading, handleRegister } = useAuth();
@@ -16,7 +17,7 @@ const Register = () => {
         e.preventDefault();
         // Handle register logic here
         await handleRegister(username, email, password);
-        navigate('/dashboard');
+        navigate('/');
     }
     if(loading) {
             return (<main><h1>Loading...</h1></main>)
