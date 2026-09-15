@@ -1,65 +1,59 @@
-import { useContext,useEffect } from "react";
+import { useContext, useState } from "react";
 import { AuthContext } from "../auth.context";
 import { login, register, logout } from "../services/auth.api";
 
 export const useAuth = () =>  {
     const context = useContext(AuthContext);
-    const { user, setUser, loading, setLoading } = context;
+    if (!context) {
+        throw new Error("useAuth must be used within an AuthProvider");
+    }
+    const { user, setUser, loading } = context;
+    const [error, setError] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     const handleLogin = async (email, password) => {
-        setLoading(true);   
-        try{
-           const data = await login({ email, password });
-        setUser(data.user);
-        }catch(error){
-            console.error("Login failed:", error);
-        }finally{
-            setLoading(false);
+        setSubmitting(true);   
+        setError(null);
+        try {
+            const data = await login({ email, password });
+            setUser(data.user);
+            return true;
+        } catch(err) {
+            console.error("Login failed:", err);
+            setError(err.response?.data?.message || "Login failed");
+            return false;
+        } finally {
+            setSubmitting(false);
         }
-        
     }
 
     const handleRegister = async (username, email, password) => {
-        setLoading(true);
-        try{
+        setSubmitting(true);
+        setError(null);
+        try {
             const data = await register({ username, email, password });
-           setUser(data.user);
-        }catch(error){
-            console.error("Register failed:", error);
-        }finally{
-            setLoading(false);
+            setUser(data.user);
+            return true;
+        } catch(err) {
+            console.error("Register failed:", err);
+            setError(err.response?.data?.message || "Registration failed");
+            throw err;
+        } finally {
+            setSubmitting(false);
         }
     }
-
 
     const handleLogout = async () => {
-        setLoading(true);
-        try{
-         await logout();
-        setUser(null);
-        }catch(error){
-            console.error("Logout failed:", error);
-        }finally{   
-        
-        setLoading(false);
+        setSubmitting(true);
+        try {
+            await logout();
+            setUser(null);
+        } catch(err) {
+            console.error("Logout failed:", err);
+        } finally {   
+            setSubmitting(false);
         }
     }
 
-
-     useEffect(() => {
-    const getAndSetUser = async () => {
-      try {
-        const data = await getMe();
-        setUser(data.user);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getAndSetUser();
-  }, []);
-
-    return { user, loading, handleLogin, handleRegister, handleLogout };
+    return { user, loading, submitting, error, handleLogin, handleRegister, handleLogout };
 }

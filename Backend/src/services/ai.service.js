@@ -1,22 +1,48 @@
 const { GoogleGenAI } = require("@google/genai")
 const { z } = require("zod")
-const { zodToJsonSchema } = require("zod-to-json-schema")
 const puppeteer = require("puppeteer")
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GOOGLE_GENAI_API_KEY,
-    
 })
 
+const aiModels = [
+    process.env.GOOGLE_GENAI_MODEL || "gemini-3.6-flash",
+    "gemini-2.5-flash",
+]
+
+function isTemporaryAiError(error) {
+    return [429, 500, 502, 503, 504].includes(error?.status)
+        || error?.message?.includes("UNAVAILABLE")
+}
+
+async function generateContentWithRetry(request) {
+    let lastError
+
+    for (const model of aiModels) {
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            try {
+                return await ai.models.generateContent({ ...request, model })
+            } catch (error) {
+                lastError = error
+                if (!isTemporaryAiError(error)) throw error
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)))
+            }
+        }
+    }
+
+    throw lastError
+}
+
 const interviewReportSchema = z.object({
-    matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job describe"),
+    matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job description"),
     technicalQuestions: z.array(z.object({
         question: z.string().describe("The technical question can be asked in the interview"),
         intention: z.string().describe("The intention of interviewer behind asking this question"),
         answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
     })).describe("Technical questions that can be asked in the interview along with their intention and how to answer them"),
     behavioralQuestions: z.array(z.object({
-        question: z.string().describe("The technical question can be asked in the interview"),
+        question: z.string().describe("The behavioral question can be asked in the interview"),
         intention: z.string().describe("The intention of interviewer behind asking this question"),
         answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
     })).describe("Behavioral questions that can be asked in the interview along with their intention and how to answer them"),
@@ -38,44 +64,40 @@ async function generateInterviewReport({
     jobDescription
 }){
      const prompt = `Generate an interview report for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
+                        Resume: ${resume || 'None provided'}
+                        Self Description: ${selfDescription || 'None provided'}
                         Job Description: ${jobDescription}
 `
 
-    const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+    const response = await generateContentWithRetry({
         contents: prompt,
         config: {
             responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(interviewReportSchema),
+            responseSchema: z.toJSONSchema(interviewReportSchema),
         }
     })
 
-    return JSON.parse(response.text)
+    return interviewReportSchema.parse(JSON.parse(response.text))
 }
-
-// async function invokeGeminiAi(){
-//     const response = await ai.models.generateContent({
-//         model: "gemini-3.6-flash",
-//         contents: "Hello Gemini, explain what an interview is."
-//     });
-//     console.log(response.text);
-// }
 
 
 async function generatePdfFromHtml(htmlContent) {
-    const browser = await puppeteer.launch()
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: "networkidle0" })
 
     const pdfBuffer = await page.pdf({
-        format: "A4", margin: {
-            top: "20mm",
-            bottom: "20mm",
+        format: "A4",
+        margin: {
+            top: "15mm",
+            bottom: "15mm",
             left: "15mm",
             right: "15mm"
-        }
+        },
+        printBackground: true
     })
 
     await browser.close()
@@ -86,36 +108,33 @@ async function generatePdfFromHtml(htmlContent) {
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
     const resumePdfSchema = z.object({
-        html: z.string().describe("The HTML content of the resume which can be converted to PDF using any library like puppeteer")
+        html: z.string().describe("The HTML content of the resume which can be converted to PDF using puppeteer")
     })
 
-    const prompt = `Generate resume for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
+    const prompt = `Generate a resume for a candidate with the following details:
+                        Resume: ${resume || 'None provided'}
+                        Self Description: ${selfDescription || 'None provided'}
                         Job Description: ${jobDescription}
 
-                        the response should be a JSON object with a single field "html" which contains the HTML content of the resume which can be converted to PDF using any library like puppeteer.
-                        The resume should be tailored for the given job description and should highlight the candidate's strengths and relevant experience. The HTML content should be well-formatted and structured, making it easy to read and visually appealing.
-                        The content of resume should be not sound like it's generated by AI and should be as close as possible to a real human-written resume.
-                        you can highlight the content using some colors or different font styles but the overall design should be simple and professional.
-                        The content should be ATS friendly, i.e. it should be easily parsable by ATS systems without losing important information.
-                        The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
+                        The response must be a JSON object with a single field "html" which contains complete, beautiful, ATS-friendly HTML content with inline CSS styles for printing.
+                        The resume must be tailored for the given job description, highlighting relevant experience, key achievements, and matching skills.
+                        Include clean structure with header (name, contact info, LinkedIn/GitHub), Professional Summary, Work Experience, Core Skills, Key Projects, and Education.
+                        Use crisp typography (e.g. Arial or Helvetica), dark slate text color (#1e293b), elegant section headings with subtle bottom borders (#0f172a), and bullet points.
+                        Ensure proper margins and spacing so it prints perfectly as a 1-2 page PDF.
                     `
 
-    const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+    const response = await generateContentWithRetry({
         contents: prompt,
         config: {
             responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(resumePdfSchema),
+            responseSchema: z.toJSONSchema(resumePdfSchema),
         }
     })
 
-
     const jsonContent = JSON.parse(response.text)
-
     const pdfBuffer = await generatePdfFromHtml(jsonContent.html)
 
     return pdfBuffer
 }
+
 module.exports = { generateInterviewReport, generateResumePdf }

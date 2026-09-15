@@ -1,14 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
 import Login from "./features/auth/pages/Login";
 import Register from "./features/auth/pages/Register";
+import Home from "./features/interview/pages/Home";
+import Interview from "./features/interview/pages/Interview";
 import Protected from "./features/auth/components/Protected";
+import AppLayout from "./components/AppLayout";
 
 
 export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Protected><h1>Dashboard</h1></Protected>
-  },
   {
     path: "/login",
     element: <Login />
@@ -16,5 +15,22 @@ export const router = createBrowserRouter([
   {
     path: "/register",
     element: <Register />
+  },
+  {
+    element: (
+      <Protected>
+        <AppLayout />
+      </Protected>
+    ),
+    children: [
+      {
+        path: "/",
+        element: <Home />
+      },
+      {
+        path: "/interview/:interviewId",
+        element: <Interview />
+      }
+    ]
   }
 ]);

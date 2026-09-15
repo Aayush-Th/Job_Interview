@@ -23,6 +23,14 @@ const behavioralQuestionSchema = new mongoose.Schema({
     question: {
         type: String,
         required: [true, "Behavioral question is required"]
+    },
+    intention: {
+        type: String,
+        required: [true, "Intention is required"]
+    },
+    answer: {
+        type: String,
+        required: [true, "Answer is required"]
     }
 },{
     _id: false
@@ -61,7 +69,11 @@ const preparationPlanSchema = new mongoose.Schema({
 })
 
 const interviewReportSchema = new mongoose.Schema({
-  JobDescription: {
+    title: {
+        type: String,
+        trim: true
+    },
+    jobDescription: {
     type: String,   
     required: [true, "Job Description is required"]
     },
@@ -81,7 +93,13 @@ const interviewReportSchema = new mongoose.Schema({
     technicalQuestions: [technicalQuestionSchema],
     behavioralQuestions: [behavioralQuestionSchema],
     skillGaps: [skillGapSchema],
-    preparationPlan: [preparationPlanSchema]
+    preparationPlan: [preparationPlanSchema],
+    user:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }
 },{
     timestamps: true
 })
+
+module.exports = mongoose.model("interviewReport", interviewReportSchema)

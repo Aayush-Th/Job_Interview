@@ -1,7 +1,13 @@
 const userModel = require('../models/user.models');
-const bcrypt = require('../../node_modules/bcryptjs/umd');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const BlacklistToken = require('../models/blacklist.model');
+
+const cookieOptions = {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    secure: process.env.NODE_ENV === 'production'
+};
 
 
 async function registerUserController(req, res) {
@@ -27,7 +33,7 @@ async function registerUserController(req, res) {
     })
 
     const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.cookie("token",token)
+    res.cookie("token", token, cookieOptions)
     res.status(201).json({ message: 'User registered successfully', 
         user:{
             id: user._id,
@@ -52,7 +58,7 @@ async function loginUserController(req, res){
     }
 
     const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.cookie("token", token);
+    res.cookie("token", token, cookieOptions);
     res.status(200).json({ message: 'Login successful', 
         user: {
             id: user._id,
@@ -69,12 +75,15 @@ async function logoutUserController(req, res) {
         // Add the token to the blacklist
         await BlacklistToken.create({ token });
     }       
-    res.clearCookie("token");
+    res.clearCookie("token", cookieOptions);
     res.status(200).json({ message: 'Logout successful' });
 }
 
 async function getMeController(req, res) {
     const user = await userModel.findById(req.user.id).select('-password');
+    if (!user) {
+        return res.status(401).json({ message: "User account not found" });
+    }
     res.status(200).json({ 
         message: "User fetched successfully",
         user:{

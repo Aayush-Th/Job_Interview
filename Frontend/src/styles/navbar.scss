@@ -1,0 +1,74 @@
+$bg-nav: #161b22;
+$border-color: #2a3348;
+$text-primary: #e6edf3;
+$text-muted: #7d8590;
+$accent: #ff2d78;
+
+.app-navbar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.5rem;
+    background-color: $bg-nav;
+    border-bottom: 1px solid $border-color;
+    box-sizing: border-box;
+
+    &__left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    &__back {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: $text-muted;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: color 0.2s;
+
+        &:hover {
+            color: $text-primary;
+        }
+    }
+
+    &__brand {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: $text-primary;
+        text-decoration: none;
+
+        span {
+            color: $accent;
+        }
+    }
+
+    &__right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    &__user {
+        font-size: 0.85rem;
+        color: $text-muted;
+    }
+
+    &__logout {
+        padding: 0.45rem 0.9rem;
+        background: transparent;
+        border: 1px solid $border-color;
+        border-radius: 0.4rem;
+        color: $text-primary;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
+
+        &:hover {
+            border-color: $accent;
+            background-color: rgba($accent, 0.08);
+        }
+    }
+}

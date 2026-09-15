@@ -18,4 +18,16 @@ const interviewRouter = require("./routes/interview.routes");
 app.use("/api/auth", authRouter);
 app.use("/api/interview", interviewRouter);
 
+app.use((error, req, res, next) => {
+    if (error?.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({ message: "Resume must be 3MB or smaller." });
+    }
+
+    if (error?.message === "Only PDF resumes are supported.") {
+        return res.status(400).json({ message: error.message });
+    }
+
+    next(error);
+});
+
 module.exports = app;
