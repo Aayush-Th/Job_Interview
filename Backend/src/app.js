@@ -6,8 +6,8 @@ const cors = require("cors");
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: "http://localhost:5173", // Replace with your frontend URL
-    credentials: true, // Allow cookies to be sent
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
 }));
 
 // require all the routes here
